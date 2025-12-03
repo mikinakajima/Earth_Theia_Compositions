@@ -1,34 +1,83 @@
-# SPH Angle Conversion
+# SPH disk particle selection and visualization
 
-This repository contains a simple Python script that reads SPH particle output files and adds longitude and latitude for each particle based on its (x, y, z) position. This is useful for visualizing particle distributions on a sphere and for analyzing planetary impact simulations.
+This script reads SPH output files, adds spherical coordinates, selects particles that belong to the moon‐forming disk, and makes simple 3D plots.
 
-## Files
-- Angle_conversion.py : Main script that performs the coordinate conversion
-- target_SPH.txt : Example input file (target particles)
-- target_SPHwAngles.txt : Output file with added longitude/latitude
-- impactor_SPH.txt : Example input file (impactor particles)
-- impactor_SPHwAngles.txt : Output file with added longitude/latitude
+## Requirements
 
-## Input Format
-The expected input file has five columns:
-x   y   z   r   p
-where x, y, and z are Cartesian coordinates (meters), r is the particle distance from the origin (meters), and p is any scalar property (such as pressure).
+- Python 3
+- NumPy
+- Matplotlib
 
-## Output Format
-The script produces a new file with the original five columns plus two new ones:
-longitude   latitude
-Both angles are in radians. Longitude is computed as atan2(y, x), and latitude is computed as arcsin(z / r). The script also includes commented-out lines that can output degrees instead if preferred.
+## Input files
 
-## Usage
-Run the script with:
-python Angle_conversion.py
-By default, it converts:
-target_SPH.txt → target_SPHwAngles.txt
-impactor_SPH.txt → impactor_SPHwAngles.txt
-You can edit the filenames inside the script to process additional files.
+The script expects the following text files in the same directory.
 
-## Notes
-- Only NumPy is required.
-- The origin should correspond to the center of the body being mapped onto a sphere.
-- The script structure is simple and easy to modify.
+1. `target_SPH.txt`  
+2. `impactor_SPH.txt`  
 
+Each of these SPH files has 6 columns
+
+1. `x`  Cartesian x position  
+2. `y`  Cartesian y position  
+3. `z`  Cartesian z position  
+4. `r`  Distance from the planet center  
+5. `p`  Pressure (or another scalar quantity)  
+6. `ID` Integer particle ID  
+
+and
+
+3. `disk.txt`  
+
+This file lists the particles that belong to the disk.  
+Only the first column is used and it is interpreted as integer particle ID.
+
+## What the script does
+
+1. **Add spherical coordinates and reorder columns**
+
+   For each of `target_SPH.txt` and `impactor_SPH.txt` the function `read_files`  
+   - reads `x, y, z, r, p, ID`  
+   - computes longitude and latitude in radians  
+     - `longitude = arctan2(y, x)`  
+     - `latitude  = arcsin(z / r)`  
+   - writes a new file with the columns  
+
+     `ID  x  y  z  r  p  longitude  latitude`
+
+   Output files  
+   - `target_SPHwAngles.txt`  
+   - `impactor_SPHwAngles.txt`
+
+2. **Select disk particles**
+
+   The function `select_disk_particles`  
+   - reads the disk IDs from `disk.txt`  
+   - reads `ID x y z r p longitude latitude` from the SPH+angle files  
+   - keeps only rows whose `ID` appears in `disk.txt`  
+
+   Output files  
+   - `target_disk_particles.txt`  
+   - `impactor_disk_particles.txt`  
+
+   These files have the same 8 columns as above.  
+   The first column (`ID`) is written as an integer.  
+   All other columns use `%.8e` format.
+
+3. **Visualize the result**
+
+   The function `visualize_3d`  
+   - reads one of the full SPH files with angles  
+   - reads the matching disk subset file  
+   - plots all SPH particles in blue  
+   - overplots disk particles in red  
+
+   The script calls  
+   - `visualize_3d("target_SPHwAngles.txt", "target_disk_particles.txt", "Target original vs disk particles")`  
+   - `visualize_3d("impactor_SPHwAngles.txt", "impactor_disk_particles.txt", "Impactor original vs disk particles")`
+
+## How to run
+
+From the command line
+
+```bash
+python sph_disk_analysis.py
